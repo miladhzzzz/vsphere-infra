@@ -1,0 +1,12 @@
+#!ipxe
+
+set base-url http://<docker-host-ip>/ipxe_files/
+
+echo Booting ESXi...
+
+# Load ESXi kernel and initrd
+kernel ${base-url}/esxi/vmware-esxi-7.0.0-XXXXXXX-standard/vmkboot.gz
+initrd ${base-url}/esxi/vmware-esxi-7.0.0-XXXXXXX-standard/boot.gz
+
+# Boot ESXi installer
+boot
