@@ -1,0 +1,112 @@
+---
+- name: Setup vSphere environment and deploy Kubernetes cluster
+  hosts: localhost
+  vars:
+    vcenter_hostname: "{{ lookup('env', 'VCENTER_HOSTNAME') }}"
+    vcenter_username: "{{ lookup('env', 'VCENTER_USERNAME') }}"
+    vcenter_password: "{{ lookup('env', 'VCENTER_PASSWORD') }}"
+    datacenter_name: "{{ lookup('env', 'DATACENTER_NAME') }}"
+    cluster_name: "{{ lookup('env', 'CLUSTER_NAME') }}"
+    datastore_name: "{{ lookup('env', 'DATASTORE_NAME') }}"
+    network_name: "{{ lookup('env', 'NETWORK_NAME') }}"
+    esxi_hosts:
+      - name: "esxi1.example.com"
+        ip: "192.168.1.101"
+      - name: "esxi2.example.com"
+        ip: "192.168.1.102"
+      # Add more ESXi hosts as needed
+
+    cluster_api_vsphere_version: "0.7.4"  # Adjust version as needed
+    
+  tasks:
+    - name: Add ESXi hosts to vCenter
+      community.vmware.vmware_host:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        cluster_name: "{{ cluster_name }}"
+        hostname_v: "{{ item.name }}"
+        esxi_hostname: "{{ item.name }}"
+        esxi_username: "root"
+        esxi_password: "password"
+        state: present
+      with_items: "{{ esxi_hosts }}"
+      delegate_to: localhost
+
+    - name: Create datacenter
+      community.vmware.vmware_datacenter:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        name: "{{ datacenter_name }}"
+      delegate_to: localhost
+
+    - name: Create cluster
+      community.vmware.vmware_cluster:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter_name: "{{ datacenter_name }}"
+        name: "{{ cluster_name }}"
+      delegate_to: localhost
+
+    - name: Create datastore
+      community.vmware.vmware_datastore:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter_name: "{{ datacenter_name }}"
+        name: "{{ datastore_name }}"
+        type: vmfs
+      delegate_to: localhost
+
+    - name: Create network
+      community.vmware.vmware_network:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        datacenter_name: "{{ datacenter_name }}"
+        name: "{{ network_name }}"
+        vlan_id: 0
+      delegate_to: localhost
+
+    - name: Deploy Kubernetes cluster using Cluster API
+      community.kubernetes.kubectl:
+        src: "https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/releases/download/v{{ cluster_api_vsphere_version }}/infrastructure-components.yaml"
+        state: present
+      delegate_to: localhost
+
+    - name: Wait for Kubernetes cluster to be ready
+      community.kubernetes.kubectl:
+        wait_for:
+          type: "condition"
+          condition: "Ready"
+          kind: "Machine"
+          namespace: "capi-system"
+        timeout: "300s"
+      delegate_to: localhost
+
+    - name: Install Kubernetes control plane components
+      community.kubernetes.kubectl:
+        src: "https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/releases/download/v{{ cluster_api_vsphere_version }}/control-plane-components.yaml"
+        state: present
+      delegate_to: localhost
+
+    - name: Install Kubernetes worker components
+      community.kubernetes.kubectl:
+        src: "https://github.com/kubernetes-sigs/cluster-api-provider-vsphere/releases/download/v{{ cluster_api_vsphere_version }}/bootstrap-components.yaml"
+        state: present
+      delegate_to: localhost
+
+    - name: Install and configure Kubernetes VMware autoscaler
+      kubernetes.core.vsphere_autoscaler:
+        version: "1.21.0"
+        namespace: "kube-system"
+        min_nodes: 1
+        max_nodes: 10
+      delegate_to: localhost

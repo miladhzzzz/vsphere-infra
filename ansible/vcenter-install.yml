@@ -1,0 +1,22 @@
+---
+- name: Install vCenter Server
+  hosts: orchestration-mgmt-0
+  vars:
+    vcenter_iso_path: "/path/to/vcenter.iso"  # Replace with the path to your vCenter ISO file
+    vcenter_mount_point: "/mnt/vcenter_iso"   # Mount point for the ISO image
+  tasks:
+    - name: Ensure mount directory exists
+      file:
+        path: "{{ vcenter_mount_point }}"
+        state: directory
+
+    - name: Mount vCenter ISO
+      mount:
+        path: "{{ vcenter_mount_point }}"
+        src: "{{ vcenter_iso_path }}"
+        fstype: iso9660
+        opts: loop
+        state: mounted
+
+    - name: Run vCenter Installer
+      command: "{{ vcenter_mount_point }}/autorun"
