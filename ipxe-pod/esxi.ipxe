@@ -4,9 +4,12 @@ set base-url http://<docker-host-ip>/ipxe_files/
 
 echo Booting ESXi...
 
-# Load ESXi kernel and initrd
-kernel ${base-url}/esxi/vmware-esxi-7.0.0-XXXXXXX-standard/vmkboot.gz
-initrd ${base-url}/esxi/vmware-esxi-7.0.0-XXXXXXX-standard/boot.gz
+# Boot ESXi installer from ISO with kickstart file
+kernel ${base-url}/esxi/vmware-esxi-7.0.0-XXXXXXX-standard/boot.cfg || goto failed
+initrd ${base-url}/esxi/vmware-esxi-7.0.0-XXXXXXX-standard/mboot.c32 || goto failed
+imgargs mboot.c32 -c boot.cfg ks=${base-url}/ks.cfg || goto failed
+boot || goto failed
 
-# Boot ESXi installer
-boot
+:failed
+echo Failed to boot ESXi installer
+prompt
