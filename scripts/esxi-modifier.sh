@@ -12,13 +12,13 @@ check_dependencies() {
         exit 1
     fi
 
-    if ! command -v ssh-keygen > /dev/null; then
-        echo "Error: ssh-keygen is not installed. Please install it."
+    if ! command -v sed > /dev/null; then
+        echo "Error: sed is not installed. Please install it."
         exit 1
     fi
 
-    if ! command -v sed > /dev/null; then
-        echo "Error: sed is not installed. Please install it."
+    if ! command -v ssh-keygen > /dev/null; then
+        echo "Error: ssh-keygen is not installed. Please install it."
         exit 1
     fi
 }
@@ -26,10 +26,8 @@ check_dependencies() {
 # Define variables
 ESXI_IMAGE_FILE="$1"
 SSH_PUBLIC_KEY_FILE="ssh_public_key.pub"
-SSH_PRIVATE_KEY_FILE="ssh_private_key"
-AUTOUNATTEND_FILE="autounattend.xml"
-AUTOUNATTEND_OUTPUT="autounattend_output.xml"
-DEFAULT_USERNAME="root"
+KS_CFG_FILE="ks.cfg"
+KS_CFG_PATH="./$KS_CFG_FILE"
 MOUNT_DIR=$(mktemp -d)
 
 # Function to mount the ESXi image
@@ -39,16 +37,6 @@ mount_esxi_image() {
         echo "Failed to mount the ESXi image."
         exit 1
     }
-}
-
-# Function to generate SSH key pair
-generate_ssh_key_pair() {
-    echo "Generating SSH key pair..."
-    ssh-keygen -t rsa -N "" -f "$SSH_PRIVATE_KEY_FILE" || {
-        echo "Failed to generate SSH key pair."
-        exit 1
-    }
-    echo "SSH key pair generated successfully."
 }
 
 # Function to inject SSH public key into ESXi image
@@ -62,14 +50,14 @@ inject_ssh_public_key() {
     echo "SSH public key injected successfully."
 }
 
-# Function to set up auto-installation options
-setup_auto_installation() {
-    echo "Setting up auto-installation options..."
-    sed "s/{{USERNAME}}/$DEFAULT_USERNAME/g" "$AUTOUNATTEND_FILE" > "$MOUNT_DIR/$(basename $AUTOUNATTEND_OUTPUT)" || {
-        echo "Failed to set up auto-installation options."
+# Function to copy ks.cfg file to the mounted ISO image directory
+copy_ks_cfg() {
+    echo "Copying ks.cfg file to the mounted ISO image directory..."
+    cp "$KS_CFG_PATH" "$MOUNT_DIR/$KS_CFG_FILE" || {
+        echo "Failed to copy ks.cfg file to the mounted ISO image directory."
         exit 1
     }
-    echo "Auto-installation options set up successfully."
+    echo "ks.cfg file copied successfully to the mounted ISO image directory."
 }
 
 # Function to unmount the ESXi image
@@ -96,14 +84,11 @@ main() {
     # Mount the ESXi image
     mount_esxi_image
 
-    # Generate SSH key pair
-    generate_ssh_key_pair
-
     # Inject SSH public key into ESXi image
     inject_ssh_public_key
 
-    # Set up auto-installation options
-    setup_auto_installation
+    # Copy ks.cfg file to the mounted ISO image directory
+    copy_ks_cfg
 
     # Unmount the ESXi image
     unmount_esxi_image
