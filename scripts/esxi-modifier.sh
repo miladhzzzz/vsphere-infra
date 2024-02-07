@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# esxi image modification script
+
 # Check if required utilities are installed
 check_dependencies() {
     if ! command -v mktemp > /dev/null; then
