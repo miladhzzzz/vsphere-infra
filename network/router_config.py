@@ -2,9 +2,9 @@ from netmiko import ConnectHandler
 
 router = {
     "device_type": "cisco_ios",
-    "host": "router_ip_address",
-    "username": "your_username",
-    "password": "your_password",
+    "host": "sandbox-iosxe-latest-1.cisco.com",
+    "username": "developer",
+    "password": "C1sco12345",
 }
 
 # Establish SSH connection to router
@@ -17,9 +17,9 @@ except Exception as e:
 
 # Configure BGP
 bgp_config_commands = [
-    "router bgp YOUR_ASN",
-    "neighbor WAN_IP_ADDRESS remote-as PEER_ASN",
-    "network LAN_NETWORK mask LAN_NETMASK",
+    "configure terminal",
+    "show inet",
+    "",
 ]
 bgp_config_output = net_connect.send_config_set(bgp_config_commands)
 print("BGP configuration applied:", bgp_config_output)
